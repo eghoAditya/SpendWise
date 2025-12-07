@@ -1,10 +1,10 @@
-// app/(tabs)/explore.tsx
 import { spacing } from '@/src/theme/spaces';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import {
   Alert,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -40,11 +40,24 @@ export default function ExpensesScreen() {
   );
 
   const confirmDelete = (expense: Expense) => {
+    const label =
+      expense.note?.trim() || CATEGORY_META[expense.category].label;
+
+    // ✅ Web: use native browser confirm dialog
+    if (Platform.OS === 'web') {
+      const ok = window.confirm(
+        `Are you sure you want to delete "${label}"?`
+      );
+      if (ok) {
+        deleteExpense(expense.id);
+      }
+      return;
+    }
+
+    // ✅ iOS / Android: use React Native Alert
     Alert.alert(
       'Delete expense',
-      `Are you sure you want to delete “${
-        expense.note?.trim() || CATEGORY_META[expense.category].label
-      }”?`,
+      `Are you sure you want to delete "${label}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

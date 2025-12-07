@@ -1,18 +1,18 @@
 import { spacing } from '@/src/theme/spaces';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { Card } from '../../src/components/Card';
 import { PrimaryButton } from '../../src/components/PrimaryButton';
@@ -93,6 +93,26 @@ export default function AddExpenseScreen() {
   };
 
   const openDatePicker = () => {
+    const current = selectedDate.toISOString().slice(0, 10);
+
+    // ✅ Web fallback: simple prompt instead of native datepicker
+    if (Platform.OS === 'web') {
+      const input = window.prompt(
+        'Enter date as YYYY-MM-DD',
+        current
+      );
+      if (!input) return;
+
+      const parsed = new Date(input);
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed);
+      } else {
+        window.alert('Invalid date format. Please use YYYY-MM-DD.');
+      }
+      return;
+    }
+
+    // ✅ Native platforms: open our dark modal with DateTimePicker
     setIsDatePickerOpen(true);
   };
 
@@ -100,9 +120,7 @@ export default function AddExpenseScreen() {
     if (event.type === 'set' && date) {
       setSelectedDate(date);
     }
-    // In both 'set' and 'dismissed', close the picker
     if (Platform.OS === 'android') {
-      // Android picker is inline; we close immediately after interaction
       setIsDatePickerOpen(false);
     }
   };
@@ -161,7 +179,11 @@ export default function AddExpenseScreen() {
               {CATEGORIES.map((item) => {
                 const isActive = item.key === category;
                 return (
-                  <View key={item.key} style={{ flex: 1, minWidth: '30%' }}>
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setCategory(item.key)}
+                    style={{ flex: 1, minWidth: '30%' }}
+                  >
                     <Card
                       style={[
                         styles.categoryCard,
@@ -172,19 +194,17 @@ export default function AddExpenseScreen() {
                         name={item.icon}
                         size={20}
                         color={isActive ? colors.accent : colors.textSecondary}
-                        onPress={() => setCategory(item.key)}
                       />
                       <Text
                         style={[
                           styles.categoryLabel,
                           isActive && styles.categoryLabelActive,
                         ]}
-                        onPress={() => setCategory(item.key)}
                       >
                         {item.label}
                       </Text>
                     </Card>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -197,7 +217,11 @@ export default function AddExpenseScreen() {
                 color={colors.textSecondary}
               />
               <Text style={styles.dateText}>{dateLabel}</Text>
-              <Text style={styles.dateHint}>(tap to change)</Text>
+              <Text style={styles.dateHint}>
+                {Platform.OS === 'web'
+                  ? '(click to type date)'
+                  : '(tap to change)'}
+              </Text>
             </Pressable>
 
             <Text style={[styles.label, { marginTop: spacing.lg }]}>Note</Text>
@@ -234,7 +258,8 @@ export default function AddExpenseScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {isDatePickerOpen && (
+      {/* Only show native date modal on iOS/Android */}
+      {Platform.OS !== 'web' && isDatePickerOpen && (
         <View style={styles.dateOverlay}>
           <Pressable style={styles.overlayBackdrop} onPress={closeDatePicker} />
           <View style={styles.dateDialog}>
@@ -410,7 +435,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  // date overlay
   dateOverlay: {
     position: 'absolute',
     left: 0,
