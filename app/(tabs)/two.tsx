@@ -1,31 +1,38 @@
-import { StyleSheet } from 'react-native';
+// app/(tabs)/explore.tsx
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Screen } from '../../src/components/Screen';
+import { colors } from '../../src/theme/colors';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-
-export default function TabTwoScreen() {
+export default function ExpensesScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab Two</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/two.tsx" />
-    </View>
+    <Screen>
+      <View style={styles.center}>
+        <Text style={styles.title}>Expenses</Text>
+        <Text style={styles.subtitle}>
+          Soon you&apos;ll be able to filter, search, and explore all your spending here.
+        </Text>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  center: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
