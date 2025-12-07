@@ -28,6 +28,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="add"
+        options={{
+          title: 'Add',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="two"
         options={{
           title: 'Expenses',
