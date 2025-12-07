@@ -1,9 +1,13 @@
 import { spacing } from '@/src/theme/spaces';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, {
+    DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -39,14 +43,31 @@ export default function AddExpenseScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
 
-  // For now, always "today"
-  const today = new Date();
-  const dateISO = today.toISOString().slice(0, 10);
-  const dateLabel = 'Today';
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const parsedAmount = parseFloat(amount.replace(/,/g, '.'));
   const amountIsValid = !isNaN(parsedAmount) && parsedAmount > 0;
   const formIsValid = amountIsValid && !!category;
+
+  const dateISO = selectedDate.toISOString().slice(0, 10);
+
+  const isToday = (() => {
+    const now = new Date();
+    return (
+      selectedDate.getDate() === now.getDate() &&
+      selectedDate.getMonth() === now.getMonth() &&
+      selectedDate.getFullYear() === now.getFullYear()
+    );
+  })();
+
+  const dateLabel = isToday
+    ? 'Today'
+    : selectedDate.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
 
   const handleSubmit = () => {
     setTouched(true);
@@ -54,7 +75,6 @@ export default function AddExpenseScreen() {
 
     setSubmitting(true);
 
-    // Add to global state
     addExpense({
       amount: parsedAmount,
       category,
@@ -62,14 +82,33 @@ export default function AddExpenseScreen() {
       date: dateISO,
     });
 
-    // Simulate short delay for nicer UX (for the spinner)
     setTimeout(() => {
       setSubmitting(false);
       setAmount('');
       setNote('');
       setCategory('food');
       setTouched(false);
+      setSelectedDate(new Date());
     }, 350);
+  };
+
+  const openDatePicker = () => {
+    setIsDatePickerOpen(true);
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (event.type === 'set' && date) {
+      setSelectedDate(date);
+    }
+    // In both 'set' and 'dismissed', close the picker
+    if (Platform.OS === 'android') {
+      // Android picker is inline; we close immediately after interaction
+      setIsDatePickerOpen(false);
+    }
+  };
+
+  const closeDatePicker = () => {
+    setIsDatePickerOpen(false);
   };
 
   return (
@@ -151,15 +190,15 @@ export default function AddExpenseScreen() {
             </View>
 
             <Text style={[styles.label, { marginTop: spacing.lg }]}>Date</Text>
-            <View style={styles.inlineRow}>
+            <Pressable onPress={openDatePicker} style={styles.inlineRowPress}>
               <Ionicons
                 name="calendar-outline"
                 size={18}
                 color={colors.textSecondary}
               />
               <Text style={styles.dateText}>{dateLabel}</Text>
-              <Text style={styles.dateHint}>(today&apos;s date is used)</Text>
-            </View>
+              <Text style={styles.dateHint}>(tap to change)</Text>
+            </Pressable>
 
             <Text style={[styles.label, { marginTop: spacing.lg }]}>Note</Text>
             <TextInput
@@ -194,6 +233,51 @@ export default function AddExpenseScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isDatePickerOpen && (
+        <View style={styles.dateOverlay}>
+          <Pressable style={styles.overlayBackdrop} onPress={closeDatePicker} />
+          <View style={styles.dateDialog}>
+            <Text style={styles.dialogTitle}>Select date</Text>
+            <Text style={styles.dialogSubtitle}>
+              Choose when this expense actually happened.
+            </Text>
+            <View style={styles.datePickerWrapper}>
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+                themeVariant="dark"
+              />
+            </View>
+            {Platform.OS === 'ios' && (
+              <View style={styles.dialogActions}>
+                <Pressable
+                  onPress={closeDatePicker}
+                  style={({ pressed }) => [
+                    styles.dialogButton,
+                    pressed && styles.dialogButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.dialogButtonTextSecondary}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={closeDatePicker}
+                  style={({ pressed }) => [
+                    styles.dialogButton,
+                    styles.dialogButtonPrimary,
+                    pressed && styles.dialogButtonPrimaryPressed,
+                  ]}
+                >
+                  <Text style={styles.dialogButtonTextPrimary}>Done</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -289,7 +373,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '500',
   },
-  inlineRow: {
+  inlineRowPress: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -325,5 +409,78 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  // date overlay
+  dateOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+  },
+  dateDialog: {
+    width: '90%',
+    maxWidth: 420,
+    borderRadius: 20,
+    padding: spacing.lg,
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  dialogSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+    marginBottom: spacing.md,
+  },
+  datePickerWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#020617',
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  dialogButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+  },
+  dialogButtonPressed: {
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+  },
+  dialogButtonPrimary: {
+    backgroundColor: colors.accent,
+  },
+  dialogButtonPrimaryPressed: {
+    opacity: 0.9,
+  },
+  dialogButtonTextSecondary: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dialogButtonTextPrimary: {
+    color: '#020617',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
