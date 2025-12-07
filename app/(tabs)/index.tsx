@@ -1,69 +1,145 @@
 // app/(tabs)/index.tsx
 import { spacing } from '@/src/theme/spaces';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Card } from '../../src/components/Card';
-import { CategoryPieChart, CategorySlice } from '../../src/components/CategoryPieChart';
+import {
+  CategoryPieChart,
+  CategorySlice,
+} from '../../src/components/CategoryPieChart';
 import { Screen } from '../../src/components/Screen';
+import { useExpenses } from '../../src/context/ExpensesContext';
 import { colors } from '../../src/theme/colors';
+import { ExpenseCategory } from '../../src/types/expense';
+
+const CATEGORY_META: Record<
+  ExpenseCategory,
+  { label: string; color: string }
+> = {
+  food: { label: 'Food & Dining', color: '#22c55e' },
+  entertainment: { label: 'Entertainment', color: '#6366f1' },
+  shopping: { label: 'Shopping', color: '#ec4899' },
+  fuel: { label: 'Fuel & Transport', color: '#f97316' },
+  bills: { label: 'Bills & Utilities', color: '#eab308' },
+  other: { label: 'Other', color: '#6b7280' },
+};
 
 export default function DashboardScreen() {
-  // Dummy data for now – we'll wire real data later
-  const monthName = 'December';
-  const totalSpent = 42580;
-  const budget = 60000;
+  const router = useRouter();
+  const { expenses, budget, updateBudget } = useExpenses();
+  const today = new Date();
+  const thisMonth = today.getMonth();
+  const thisYear = today.getFullYear();
+
+  const [isBudgetEditorOpen, setIsBudgetEditorOpen] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState(budget.toString());
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  const {
+    monthName,
+    totalSpent,
+    monthExpenses,
+    categorySlices,
+    recentTransactions,
+  } = useMemo(() => {
+    const monthNameFormatter = new Intl.DateTimeFormat('en-IN', {
+      month: 'long',
+    });
+
+    const monthName = monthNameFormatter.format(today);
+
+    const monthExpenses = expenses.filter((e) => {
+      const d = new Date(e.date);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+
+    const totalSpent = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const categoryTotals: Record<ExpenseCategory, number> = {
+      food: 0,
+      entertainment: 0,
+      shopping: 0,
+      fuel: 0,
+      bills: 0,
+      other: 0,
+    };
+
+    monthExpenses.forEach((e) => {
+      categoryTotals[e.category] += e.amount;
+    });
+
+    const categorySlices: CategorySlice[] = (Object.keys(
+      categoryTotals
+    ) as ExpenseCategory[])
+      .filter((key) => categoryTotals[key] > 0)
+      .map((key) => ({
+        key,
+        label: CATEGORY_META[key].label,
+        amount: categoryTotals[key],
+        color: CATEGORY_META[key].color,
+      }));
+
+    const recent = [...expenses]
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, 3);
+
+    return {
+      monthName,
+      totalSpent,
+      monthExpenses,
+      categorySlices,
+      recentTransactions: recent,
+    };
+  }, [expenses, thisMonth, thisYear, today]);
+
   const remaining = budget - totalSpent;
-  const remainingPct = Math.max(0, Math.round((remaining / budget) * 100));
+  const remainingPct =
+    budget > 0 ? Math.max(0, Math.round((remaining / budget) * 100)) : 0;
 
-  const categoryData: CategorySlice[] = [
-    {
-      key: 'food',
-      label: 'Food & Dining',
-      amount: 12400,
-      color: '#22c55e',
-    },
-    {
-      key: 'entertainment',
-      label: 'Entertainment',
-      amount: 7800,
-      color: '#6366f1',
-    },
-    {
-      key: 'shopping',
-      label: 'Shopping',
-      amount: 10180,
-      color: '#ec4899',
-    },
-    {
-      key: 'fuel',
-      label: 'Fuel & Transport',
-      amount: 8950,
-      color: '#f97316',
-    },
-    {
-      key: 'bills',
-      label: 'Bills & Utilities',
-      amount: 8250,
-      color: '#eab308',
-    },
-  ];
+  const handleViewAllPress = () => {
+    router.push('/(tabs)/two');
+  };
 
-  const recentTransactions = [
-    { label: 'Zomato – Dinner', category: 'Food', amount: 620, time: 'Today • 8:12 PM' },
-    { label: 'Ola – Airport drop', category: 'Transport', amount: 890, time: 'Today • 5:02 PM' },
-    { label: 'Amazon – Headphones', category: 'Shopping', amount: 2199, time: 'Yesterday • 9:30 PM' },
-  ];
+  const openBudgetEditor = () => {
+    setBudgetDraft(budget.toString());
+    setBudgetError(null);
+    setIsBudgetEditorOpen(true);
+  };
+
+  const handleBudgetSave = () => {
+    const parsed = parseFloat(budgetDraft.replace(/,/g, '.'));
+    if (isNaN(parsed) || parsed <= 0) {
+      setBudgetError('Please enter a valid positive number.');
+      return;
+    }
+    const normalized = Math.round(parsed);
+    updateBudget(normalized);
+    setIsBudgetEditorOpen(false);
+  };
 
   return (
     <Screen>
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.appName}>SpendWise</Text>
-          <Text style={styles.subtitle}>This month&apos;s overview</Text>
+          <Text style={styles.subtitle}>
+            {monthExpenses.length === 0
+              ? 'Start by logging your first expense.'
+              : "This month's overview"}
+          </Text>
         </View>
         <View style={styles.badge}>
           <View style={styles.badgeDot} />
-          <Text style={styles.badgeText}>On track</Text>
+          <Text style={styles.badgeText}>
+            {totalSpent === 0 ? 'No data yet' : 'On track'}
+          </Text>
         </View>
       </View>
 
@@ -73,14 +149,22 @@ export default function DashboardScreen() {
         <Text style={styles.totalAmount}>₹{totalSpent.toLocaleString()}</Text>
 
         <View style={styles.summaryRow}>
-          <View>
-            <Text style={styles.subLabel}>Budget</Text>
-            <Text style={styles.subValue}>₹{budget.toLocaleString()}</Text>
-          </View>
+          <Pressable onPress={openBudgetEditor} style={styles.budgetTapArea}>
+            <Text style={styles.subLabel}>Budget (tap to edit)</Text>
+            <Text style={styles.subValue}>
+              ₹{budget.toLocaleString()}
+            </Text>
+          </Pressable>
+
           <View style={styles.summaryRight}>
             <Text style={styles.subLabel}>Remaining</Text>
-            <Text style={styles.subValuePositive}>
-              ₹{remaining.toLocaleString()} ({remainingPct}%)
+            <Text
+              style={
+                remaining >= 0 ? styles.subValuePositive : styles.subValueOver
+              }
+            >
+              ₹{remaining.toLocaleString()}
+              {budget > 0 ? ` (${remainingPct}%)` : ''}
             </Text>
           </View>
         </View>
@@ -89,7 +173,12 @@ export default function DashboardScreen() {
           <View
             style={[
               styles.progressBarFill,
-              { width: `${Math.min(100, (totalSpent / budget) * 100)}%` },
+              {
+                width:
+                  budget > 0
+                    ? `${Math.min(100, (totalSpent / budget) * 100)}%`
+                    : '0%',
+              },
             ]}
           />
         </View>
@@ -97,37 +186,127 @@ export default function DashboardScreen() {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Spending by category</Text>
-        <Text style={styles.sectionLabel}>Dec 1–31</Text>
+        <Text style={styles.sectionLabel}>
+          {monthExpenses.length === 0 ? 'No data yet' : 'This month'}
+        </Text>
       </View>
 
-      <Card style={styles.pieCard}>
-        <CategoryPieChart data={categoryData} />
-      </Card>
+      {categorySlices.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
+            Once you add expenses, this chart will break down your spending by
+            category.
+          </Text>
+        </Card>
+      ) : (
+        <Card style={styles.pieCard}>
+          <CategoryPieChart data={categorySlices} />
+        </Card>
+      )}
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent transactions</Text>
-        <Text style={styles.sectionLabel}>View all</Text>
+        <Pressable onPress={handleViewAllPress}>
+          <Text style={styles.sectionLink}>View all</Text>
+        </Pressable>
       </View>
 
-      <Card style={styles.listCard}>
-        {recentTransactions.map((item, index) => (
-          <View
-            key={item.label}
-            style={[
-              styles.transactionRow,
-              index < recentTransactions.length - 1 && styles.transactionRowBorder,
-            ]}
-          >
-            <View>
-              <Text style={styles.transactionLabel}>{item.label}</Text>
-              <Text style={styles.transactionMeta}>
-                {item.category} · {item.time}
-              </Text>
+      {recentTransactions.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
+            Your most recent transactions will show up here.
+          </Text>
+        </Card>
+      ) : (
+        <Card style={styles.listCard}>
+          {recentTransactions.map((item, index) => {
+            const created = new Date(item.createdAt);
+            const timeLabel = created.toLocaleTimeString('en-IN', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            const dateLabel = created.toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+            });
+
+            const categoryLabel = CATEGORY_META[item.category].label;
+
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.transactionRow,
+                  index < recentTransactions.length - 1 &&
+                    styles.transactionRowBorder,
+                ]}
+              >
+                <View>
+                  <Text style={styles.transactionLabel}>
+                    {item.note || categoryLabel}
+                  </Text>
+                  <Text style={styles.transactionMeta}>
+                    {categoryLabel} · {dateLabel} • {timeLabel}
+                  </Text>
+                </View>
+                <Text style={styles.transactionAmount}>
+                  -₹{item.amount.toLocaleString()}
+                </Text>
+              </View>
+            );
+          })}
+        </Card>
+      )}
+
+      {isBudgetEditorOpen && (
+        <View style={styles.budgetOverlay}>
+          <View style={styles.budgetDialog}>
+            <Text style={styles.dialogTitle}>Edit monthly budget</Text>
+            <Text style={styles.dialogSubtitle}>
+              This budget is used to calculate your remaining amount and
+              progress.
+            </Text>
+            <View style={styles.budgetInputRow}>
+              <Text style={styles.currency}>₹</Text>
+              <TextInput
+                value={budgetDraft}
+                onChangeText={(text) => {
+                  setBudgetDraft(text);
+                  setBudgetError(null);
+                }}
+                placeholder="60000"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+                style={styles.budgetInput}
+              />
             </View>
-            <Text style={styles.transactionAmount}>-₹{item.amount.toLocaleString()}</Text>
+            {budgetError && (
+              <Text style={styles.budgetError}>{budgetError}</Text>
+            )}
+            <View style={styles.dialogActions}>
+              <Pressable
+                onPress={() => setIsBudgetEditorOpen(false)}
+                style={({ pressed }) => [
+                  styles.dialogButton,
+                  pressed && styles.dialogButtonPressed,
+                ]}
+              >
+                <Text style={styles.dialogButtonTextSecondary}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleBudgetSave}
+                style={({ pressed }) => [
+                  styles.dialogButton,
+                  styles.dialogButtonPrimary,
+                  pressed && styles.dialogButtonPrimaryPressed,
+                ]}
+              >
+                <Text style={styles.dialogButtonTextPrimary}>Save</Text>
+              </Pressable>
+            </View>
           </View>
-        ))}
-      </Card>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -156,7 +335,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 999,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: 'rgba(148, 163, 184, 0.12)',
   },
   badgeDot: {
     width: 8,
@@ -166,7 +345,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   badgeText: {
-    color: colors.accent,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -195,6 +374,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: spacing.md,
   },
+  budgetTapArea: {
+    paddingRight: spacing.sm,
+  },
   summaryRight: {
     alignItems: 'flex-end',
   },
@@ -210,6 +392,12 @@ const styles = StyleSheet.create({
   },
   subValuePositive: {
     color: colors.accent,
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  subValueOver: {
+    color: '#f97373',
     fontSize: 16,
     fontWeight: '500',
     marginTop: 2,
@@ -241,11 +429,23 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
   },
+  sectionLink: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '500',
+  },
   pieCard: {
     marginTop: spacing.xs,
   },
   listCard: {
     marginTop: spacing.sm,
+  },
+  emptyCard: {
+    paddingVertical: spacing.md,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   transactionRow: {
     flexDirection: 'row',
@@ -270,6 +470,90 @@ const styles = StyleSheet.create({
   transactionAmount: {
     color: colors.textPrimary,
     fontSize: 15,
+    fontWeight: '600',
+  },
+  budgetOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  budgetDialog: {
+    backgroundColor: '#020617',
+    padding: spacing.lg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  dialogSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  budgetInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: '#020617',
+    marginTop: spacing.lg,
+  },
+  currency: {
+    fontSize: 18,
+    color: colors.textSecondary,
+    marginRight: 4,
+  },
+  budgetInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  budgetError: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#f97373',
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  dialogButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+  },
+  dialogButtonPressed: {
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+  },
+  dialogButtonPrimary: {
+    backgroundColor: colors.accent,
+  },
+  dialogButtonPrimaryPressed: {
+    opacity: 0.9,
+  },
+  dialogButtonTextSecondary: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dialogButtonTextPrimary: {
+    color: '#020617',
+    fontSize: 14,
     fontWeight: '600',
   },
 });
