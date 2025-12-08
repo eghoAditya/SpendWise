@@ -43,7 +43,6 @@ export default function ExpensesScreen() {
     const label =
       expense.note?.trim() || CATEGORY_META[expense.category].label;
 
-    // ✅ Web: use native browser confirm dialog
     if (Platform.OS === 'web') {
       const ok = window.confirm(
         `Are you sure you want to delete "${label}"?`
@@ -54,7 +53,6 @@ export default function ExpensesScreen() {
       return;
     }
 
-    // ✅ iOS / Android: use React Native Alert
     Alert.alert(
       'Delete expense',
       `Are you sure you want to delete "${label}"?`,

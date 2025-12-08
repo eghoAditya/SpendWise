@@ -95,7 +95,6 @@ export default function AddExpenseScreen() {
   const openDatePicker = () => {
     const current = selectedDate.toISOString().slice(0, 10);
 
-    // ✅ Web fallback: simple prompt instead of native datepicker
     if (Platform.OS === 'web') {
       const input = window.prompt(
         'Enter date as YYYY-MM-DD',
@@ -112,7 +111,6 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    // ✅ Native platforms: open our dark modal with DateTimePicker
     setIsDatePickerOpen(true);
   };
 
@@ -258,7 +256,6 @@ export default function AddExpenseScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Only show native date modal on iOS/Android */}
       {Platform.OS !== 'web' && isDatePickerOpen && (
         <View style={styles.dateOverlay}>
           <Pressable style={styles.overlayBackdrop} onPress={closeDatePicker} />

@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import { spacing } from '@/src/theme/spaces';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';

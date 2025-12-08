@@ -1,11 +1,10 @@
-// src/context/ExpensesContext.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
-    createContext,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { Expense, ExpenseCategory } from '../types/expense';
 
@@ -13,7 +12,7 @@ type NewExpenseInput = {
   amount: number;
   category: ExpenseCategory;
   note?: string;
-  date: string; // ISO date string: "2025-12-07"
+  date: string; 
 };
 
 type ExpensesContextValue = {
@@ -39,7 +38,6 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [budget, setBudget] = useState<number>(60000);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from AsyncStorage on mount
   useEffect(() => {
     const load = async () => {
       try {
@@ -69,7 +67,6 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
     load();
   }, []);
 
-  // Save expenses when they change
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -87,7 +84,6 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
     saveExpenses();
   }, [expenses, isHydrated]);
 
-  // Save budget when it changes
   useEffect(() => {
     if (!isHydrated) return;
 

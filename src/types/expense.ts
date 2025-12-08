@@ -12,6 +12,6 @@ export interface Expense {
   amount: number;
   category: ExpenseCategory;
   note?: string;
-  date: string;      // ISO date string, e.g. "2025-12-07"
-  createdAt: string; // ISO date-time string
+  date: string;     
+  createdAt: string; 
 }
