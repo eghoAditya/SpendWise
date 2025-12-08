@@ -10,6 +10,14 @@ It focuses on a clean dark UI, simple interactions, and a realistic architecture
 
 ---
 
+<p align="center">
+  <img src="./screenshots/dashboard.jpeg" width="250" />
+  <img src="./screenshots/addexpense.jpeg" width="250" />
+  <img src="./screenshots/expenses.jpeg" width="250" />
+</p>
+
+---
+
 ##  Features
 
 - **Dashboard overview**
