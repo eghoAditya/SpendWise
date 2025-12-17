@@ -1,45 +1,41 @@
 import { Expense, ExpenseCategory } from '../types/expense';
+import { CATEGORY_TYPE_MAP } from './categoryConfig';
 
-export type MonthlyExpenseSummary = {
-  month: number;
-  year: number;
-  total: number;
-  byCategory: Record<ExpenseCategory, number>;
-};
 
-export function getMonthlyExpenseSummary(
-  expenses: Expense[],
-  month: number,
-  year: number
-): MonthlyExpenseSummary {
-  const filtered = expenses.filter((expense) => {
-    const date = new Date(expense.date);
-    return (
-      date.getMonth() === month &&
-      date.getFullYear() === year
-    );
+function createEmptyCategoryTotals(): Record<ExpenseCategory, number> {
+  return Object.keys(CATEGORY_TYPE_MAP).reduce((acc, key) => {
+    acc[key as ExpenseCategory] = 0;
+    return acc;
+  }, {} as Record<ExpenseCategory, number>);
+}
+
+
+export function getCategoryTotals(expenses: Expense[]) {
+  const totals = createEmptyCategoryTotals();
+
+  expenses.forEach((e) => {
+    totals[e.category] += e.amount;
   });
 
-  const byCategory: Record<ExpenseCategory, number> = {
-    food: 0,
-    entertainment: 0,
-    shopping: 0,
-    fuel: 0,
-    bills: 0,
-    other: 0,
-  };
+  return totals;
+}
 
-  let total = 0;
 
-  filtered.forEach((expense) => {
-    byCategory[expense.category] += expense.amount;
-    total += expense.amount;
+export function getEssentialSplitTotals(expenses: Expense[]) {
+  let essentialTotal = 0;
+  let nonEssentialTotal = 0;
+
+  expenses.forEach((e) => {
+    const type = CATEGORY_TYPE_MAP[e.category];
+    if (type === 'essential') {
+      essentialTotal += e.amount;
+    } else {
+      nonEssentialTotal += e.amount;
+    }
   });
 
   return {
-    month,
-    year,
-    total,
-    byCategory,
+    essentialTotal,
+    nonEssentialTotal,
   };
 }
