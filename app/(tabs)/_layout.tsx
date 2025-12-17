@@ -1,8 +1,11 @@
 import { colors } from '@/src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
 
 export default function TabLayout() {
+  const router = useRouter();
+
   return (
     <Tabs
       screenOptions={{
@@ -15,26 +18,33 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* DASHBOARD */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name="grid-outline" size={size} color={color} />
           ),
         }}
       />
 
+      {/* ADD */}
       <Tabs.Screen
         name="add"
         options={{
           title: 'Add',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle-outline" size={size} color={color} />
+            <Ionicons
+              name="add-circle-outline"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
 
+      {/* EXPENSES */}
       <Tabs.Screen
         name="two"
         options={{
@@ -45,12 +55,26 @@ export default function TabLayout() {
         }}
       />
 
+      {/* ANALYTICS (VISIBLE ICON + LABEL + CUSTOM NAVIGATION) */}
       <Tabs.Screen
-        name="analytics"
+        name="analytics-placeholder"
         options={{
           title: 'Analytics',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="analytics-outline" size={size} color={color} />
+            <Ionicons
+              name="stats-chart-outline"
+              size={size}
+              color={color}
+            />
+          ),
+          tabBarButton: (props) => (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/analytics')}
+              style={props.style}
+            >
+              {props.children}
+            </Pressable>
           ),
         }}
       />
