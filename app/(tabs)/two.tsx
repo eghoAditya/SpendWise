@@ -1,258 +1,217 @@
+import { Card } from '@/src/components/Card';
+import { Screen } from '@/src/components/Screen';
+import { useExpenses } from '@/src/context/ExpensesContext';
+import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spaces';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
-import {
-  Alert,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Card } from '../../src/components/Card';
-import { Screen } from '../../src/components/Screen';
-import { useExpenses } from '../../src/context/ExpensesContext';
-import { colors } from '../../src/theme/colors';
-import { Expense, ExpenseCategory } from '../../src/types/expense';
+import React, { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-const CATEGORY_META: Record<
-  ExpenseCategory,
-  { label: string; icon: keyof typeof Ionicons.glyphMap }
-> = {
-  food: { label: 'Food & Dining', icon: 'fast-food-outline' },
-  entertainment: { label: 'Entertainment', icon: 'game-controller-outline' },
-  shopping: { label: 'Shopping', icon: 'bag-handle-outline' },
-  fuel: { label: 'Fuel & Transport', icon: 'car-outline' },
-  bills: { label: 'Bills & Utilities', icon: 'flash-outline' },
-  other: { label: 'Other', icon: 'ellipsis-horizontal-circle-outline' },
+type MonthKey = {
+  year: number;
+  month: number; // 0-11
 };
 
 export default function ExpensesScreen() {
   const { expenses, deleteExpense } = useExpenses();
 
-  const sortedExpenses = useMemo(
-    () =>
-      [...expenses].sort((a, b) =>
-        a.date < b.date ? 1 : a.date > b.date ? -1 : 0
-      ),
-    [expenses]
-  );
+  const current = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<MonthKey>({
+    year: current.getFullYear(),
+    month: current.getMonth(),
+  });
 
-  const confirmDelete = (expense: Expense) => {
-    const label =
-      expense.note?.trim() || CATEGORY_META[expense.category].label;
+  const availableMonths = useMemo<MonthKey[]>(() => {
+    const map = new Map<string, MonthKey>();
 
-    if (Platform.OS === 'web') {
-      const ok = window.confirm(
-        `Are you sure you want to delete "${label}"?`
-      );
-      if (ok) {
-        deleteExpense(expense.id);
+    expenses.forEach((e) => {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (!map.has(key)) {
+        map.set(key, { year: d.getFullYear(), month: d.getMonth() });
       }
-      return;
-    }
+    });
 
-    Alert.alert(
-      'Delete expense',
-      `Are you sure you want to delete "${label}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteExpense(expense.id),
-        },
-      ]
-    );
-  };
+    return Array.from(map.values()).sort((a, b) => {
+      const da = new Date(a.year, a.month).getTime();
+      const db = new Date(b.year, b.month).getTime();
+      return db - da; // newest first
+    });
+  }, [expenses]);
+
+  const { filteredExpenses, monthLabel } = useMemo(() => {
+    const filtered = expenses.filter((e) => {
+      const d = new Date(e.date);
+      return (
+        d.getFullYear() === selectedMonth.year &&
+        d.getMonth() === selectedMonth.month
+      );
+    });
+
+    const label = new Date(
+      selectedMonth.year,
+      selectedMonth.month
+    ).toLocaleString('en-IN', {
+      month: 'long',
+      year: 'numeric',
+    });
+
+    return { filteredExpenses: filtered, monthLabel: label };
+  }, [expenses, selectedMonth]);
 
   return (
     <Screen>
+      {/* HEADER */}
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>All expenses</Text>
-          <Text style={styles.subtitle}>
-            Browse your full spending history.
-          </Text>
-        </View>
-        <View style={styles.iconBadge}>
-          <Ionicons
-            name="filter-outline"
-            size={18}
-            color={colors.textSecondary}
-          />
-        </View>
+        <Text style={styles.title}>Expenses</Text>
       </View>
 
-      {sortedExpenses.length === 0 ? (
-        <Card style={styles.emptyCard}>
+      {/* MONTH SELECTOR */}
+      <View style={styles.monthSelector}>
+        {availableMonths.map((m) => {
+          const active =
+            m.year === selectedMonth.year &&
+            m.month === selectedMonth.month;
+
+          return (
+            <Pressable
+              key={`${m.year}-${m.month}`}
+              onPress={() => setSelectedMonth(m)}
+              style={[
+                styles.monthChip,
+                active && styles.monthChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.monthChipText,
+                  active && styles.monthChipTextActive,
+                ]}
+              >
+                {new Date(m.year, m.month).toLocaleString('en-IN', {
+                  month: 'short',
+                })}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* LIST HEADER */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{monthLabel}</Text>
+      </View>
+
+      {/* LIST */}
+      {filteredExpenses.length === 0 ? (
+        <Card>
           <Text style={styles.emptyText}>
-            You haven&apos;t logged any expenses yet. Add your first one from the
-            Add tab.
+            No expenses for this month.
           </Text>
         </Card>
       ) : (
-        <Card style={styles.listCard}>
-          <FlatList
-            data={sortedExpenses}
-            keyExtractor={(item) => item.id}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={({ item }) => (
-              <ExpenseRow
-                expense={item}
-                onDelete={() => confirmDelete(item)}
-              />
-            )}
-          />
+        <Card>
+          {filteredExpenses
+            .sort(
+              (a, b) =>
+                new Date(b.date).getTime() -
+                new Date(a.date).getTime()
+            )
+            .map((e) => (
+              <View key={e.id} style={styles.row}>
+                <View>
+                  <Text style={styles.label}>
+                    {e.note || e.category}
+                  </Text>
+                  <Text style={styles.date}>
+                    {new Date(e.date).toLocaleDateString('en-IN')}
+                  </Text>
+                </View>
+
+                <View style={styles.right}>
+                  <Text style={styles.amount}>
+                    ₹{e.amount.toLocaleString()}
+                  </Text>
+                  <Pressable onPress={() => deleteExpense(e.id)}>
+                    <Text style={styles.delete}>Delete</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
         </Card>
       )}
     </Screen>
   );
 }
 
-function ExpenseRow({
-  expense,
-  onDelete,
-}: {
-  expense: Expense;
-  onDelete: () => void;
-}) {
-  const meta = CATEGORY_META[expense.category];
-
-  const created = new Date(expense.date);
-  const dateLabel = created.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: '2-digit',
-  });
-
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={meta.icon} size={18} color={colors.accent} />
-        </View>
-        <View>
-          <Text style={styles.rowTitle}>
-            {expense.note?.trim() || meta.label}
-          </Text>
-          <Text style={styles.rowSubtitle}>
-            {meta.label} · {dateLabel}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.rowRight}>
-        <Text style={styles.rowAmount}>
-          -₹{expense.amount.toLocaleString()}
-        </Text>
-        <Pressable
-          onPress={onDelete}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            pressed && styles.deleteButtonPressed,
-          ]}
-        >
-          <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
+  headerRow: { marginBottom: spacing.lg },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: colors.textSecondary,
+
+  monthSelector: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    flexWrap: 'wrap',
   },
-  iconBadge: {
-    width: 34,
-    height: 34,
+  monthChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#020617',
     borderWidth: 1,
     borderColor: colors.borderSubtle,
   },
-  emptyCard: {
-    paddingVertical: spacing.md,
+  monthChipActive: {
+    backgroundColor: colors.accent,
   },
-  emptyText: {
-    color: colors.textSecondary,
+  monthChipText: {
     fontSize: 13,
+    color: colors.textSecondary,
   },
-  listCard: {
-    paddingVertical: spacing.sm,
+  monthChipTextActive: {
+    color: '#020617',
+    fontWeight: '600',
   },
-  separator: {
-    height: 1,
-    backgroundColor: colors.borderSubtle,
-    marginVertical: 4,
+
+  sectionHeader: { marginBottom: spacing.sm },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
+
+  emptyText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
   },
-  rowLeft: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  rowRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginLeft: spacing.md,
-  },
-  rowAmount: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  deleteButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'transparent',
-  },
-  deleteButtonPressed: {
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-  },
-  rowTitle: {
-    color: colors.textPrimary,
+  label: {
     fontSize: 14,
-    fontWeight: '500',
+    color: colors.textPrimary,
   },
-  rowSubtitle: {
-    color: colors.textMuted,
+  date: {
     fontSize: 12,
+    color: colors.textMuted,
+  },
+  right: {
+    alignItems: 'flex-end',
+  },
+  amount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  delete: {
+    fontSize: 12,
+    color: '#f97373',
     marginTop: 2,
   },
 });
