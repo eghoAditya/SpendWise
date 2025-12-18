@@ -1,3 +1,4 @@
+import { PremiumMonthlyBarChart } from '@/src/components/Barchart';
 import { Card } from '@/src/components/Card';
 import { Screen } from '@/src/components/Screen';
 import { useExpenses } from '@/src/context/ExpensesContext';
@@ -15,7 +16,7 @@ import {
 
 import { CategorySlice } from '@/src/components/CategoryPieChart';
 import { EssentialSplitModal } from '@/src/components/EssentialSplitModal';
-import { BarChart, PieChart } from 'react-native-chart-kit';
+import { PieChart } from 'react-native-chart-kit';
 
 /* ---------------- CATEGORY META ---------------- */
 
@@ -48,12 +49,13 @@ type MonthMeta = {
 
 export default function AnalyticsScreen() {
   const { expenses } = useExpenses();
+
   const [chartWidth, setChartWidth] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<MonthMeta | null>(null);
   const [splitOpen, setSplitOpen] = useState(false);
 
   /* ---------- LAST 3 MONTHS ---------- */
-  const monthsData = useMemo(() => {
+  const monthsData = useMemo<MonthMeta[]>(() => {
     const now = new Date();
 
     return Array.from({ length: 3 })
@@ -80,13 +82,24 @@ export default function AnalyticsScreen() {
       .reverse();
   }, [expenses]);
 
+  /* ---------- ACTIVE BAR INDEX ---------- */
+  const activeIndex = useMemo(() => {
+    if (!selectedMonth) return 0;
+
+    return monthsData.findIndex(
+      (m) =>
+        m.month === selectedMonth.month &&
+        m.year === selectedMonth.year
+    );
+  }, [monthsData, selectedMonth]);
+
   useEffect(() => {
     if (!selectedMonth && monthsData.length > 0) {
       setSelectedMonth(monthsData[monthsData.length - 1]);
     }
   }, [monthsData, selectedMonth]);
 
-  /* ---------- CATEGORY SLICES (APP STANDARD) ---------- */
+  /* ---------- CATEGORY SLICES ---------- */
   const categorySlices: CategorySlice[] = useMemo(() => {
     if (!selectedMonth) return [];
 
@@ -127,7 +140,7 @@ export default function AnalyticsScreen() {
     [categorySlices]
   );
 
-  /* ---------- PIE DATA FOR CHART KIT ---------- */
+  /* ---------- PIE DATA ---------- */
   const pieChartData = useMemo(
     () =>
       categorySlices.map((c) => ({
@@ -174,32 +187,18 @@ export default function AnalyticsScreen() {
         })}
       </View>
 
-      {/* BAR CHART */}
+      {/* PREMIUM BAR CHART */}
       <Card style={styles.chartCard}>
-        <Text style={styles.sectionTitle}>Monthly spending</Text>
         <View onLayout={onChartLayout}>
           {chartWidth > 0 && (
-            <BarChart
-              data={{
-                labels: monthsData.map((m) => m.label),
-                datasets: [{ data: monthsData.map((m) => m.total) }],
-              }}
-              width={chartWidth}
-              height={220}
-              yAxisLabel="₹"
-              yAxisSuffix=""
-              fromZero
-              chartConfig={{
-                backgroundColor: 'transparent',
-                backgroundGradientFrom: 'transparent',
-                backgroundGradientTo: 'transparent',
-                decimalPlaces: 0,
-                color: () => colors.accent,
-                labelColor: () => colors.textSecondary,
-                propsForBackgroundLines: {
-                  stroke: colors.borderSubtle,
-                  strokeDasharray: '4',
-                },
+            <PremiumMonthlyBarChart
+              months={monthsData.map((m) => ({
+                label: m.label,
+                total: m.total,
+              }))}
+              activeIndex={activeIndex}
+              onSelect={(index) => {
+                setSelectedMonth(monthsData[index]);
               }}
             />
           )}
