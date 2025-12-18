@@ -1,10 +1,7 @@
-import React from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
-
-const screenWidth = Dimensions.get('window').width;
-const chartWidth = screenWidth - 48; // account for padding/margins a bit
+import { DonutPieChart } from './PiCharts';
 
 export type CategorySlice = {
   key: string;
@@ -13,46 +10,73 @@ export type CategorySlice = {
   color: string;
 };
 
-interface CategoryPieChartProps {
+type Props = {
   data: CategorySlice[];
-}
+  onDonutPressComplete?: () => void;
+};
 
-export function CategoryPieChart({ data }: CategoryPieChartProps) {
-  const chartData = data.map((item) => ({
-    name: item.label,
-    population: item.amount,
-    color: item.color,
-    legendFontColor: colors.textSecondary,
-    legendFontSize: 12,
-  }));
+export function CategoryPieChart({
+  data,
+  onDonutPressComplete,
+}: Props) {
+  const total = data.reduce((s, c) => s + c.amount, 0);
+
+  const slices = useMemo(
+    () =>
+      data.map((c) => ({
+        value: c.amount,
+        color: c.color,
+      })),
+    [data]
+  );
 
   return (
-    <View style={styles.container}>
-      <PieChart
-        data={chartData}
-        width={chartWidth}
-        height={220}
-        accessor="population"
-        backgroundColor="transparent"
-        paddingLeft="10"
-        hasLegend={true}
-        chartConfig={{
-          backgroundColor: '#020617',
-          backgroundGradientFrom: '#020617',
-          backgroundGradientTo: '#020617',
-          decimalPlaces: 0,
-          color: () => colors.textPrimary,
-          labelColor: () => colors.textSecondary,
-        }}
-        center={[0, 0]}
-        avoidFalseZero
+    <View style={styles.row}>
+      {/* DONUT */}
+      <DonutPieChart
+        data={slices}
+        onSpinEnd={onDonutPressComplete}
       />
+
+      {/* LEGEND */}
+      <View style={styles.legend}>
+        {data.map((c) => (
+          <View key={c.key} style={styles.legendRow}>
+            <View
+              style={[styles.dot, { backgroundColor: c.color }]}
+            />
+            <Text style={styles.label}>
+              {Math.round((c.amount / total) * 100)}% {c.label}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  legend: {
+    marginLeft: 20,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  label: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });

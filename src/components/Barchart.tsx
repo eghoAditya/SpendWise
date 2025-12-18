@@ -29,7 +29,7 @@ export function PremiumMonthlyBarChart({
 }: Props) {
   const maxValue = Math.max(...months.map((m) => m.total), 1);
 
-  /* ---------------- ANIMATION ---------------- */
+                        /*  ANIMATION  */
   const animatedHeights = useRef(
     months.map(() => new Animated.Value(0))
   ).current;
@@ -47,7 +47,7 @@ export function PremiumMonthlyBarChart({
     });
   }, [months, activeIndex]);
 
-  /* ---------------- DELTA ---------------- */
+                        /*  DELTA  */
   const delta = useMemo(() => {
     const current = months[activeIndex]?.total ?? 0;
 
@@ -64,14 +64,14 @@ export function PremiumMonthlyBarChart({
       prev === 0 ? 0 : Math.round((diff / prev) * 100);
 
     return {
-      text: `${diff >= 0 ? '+' : '-'}₹${Math.abs(diff).toLocaleString()} · ${
+      text: `${diff >= 0 ? '+' : '-'}₹${Math.abs(diff).toLocaleString()} | ${
         percent >= 0 ? '+' : ''
       }${percent}%`,
       positive: diff >= 0,
     };
   }, [months, activeIndex]);
 
-  /* ---------------- Y AXIS ---------------- */
+                    /*  Y AXIS  */
   const yTicks = useMemo(() => {
     const steps = 4;
     return Array.from({ length: steps + 1 }).map((_, i) =>
@@ -154,7 +154,6 @@ export function PremiumMonthlyBarChart({
   );
 }
 
-/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
     headerRow: {

@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo } from 'react';
 import {
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spaces';
@@ -28,27 +28,24 @@ export function EssentialSplitModal({
   nonEssentialData,
   onClose,
 }: Props) {
-  /** ✅ SAFELY COMPUTE TOTALS */
   const essentialTotal = useMemo(
-    () =>
-      essentialData.reduce((sum, c) => sum + c.amount, 0),
+    () => essentialData.reduce((s, c) => s + c.amount, 0),
     [essentialData]
   );
 
   const nonEssentialTotal = useMemo(
-    () =>
-      nonEssentialData.reduce((sum, c) => sum + c.amount, 0),
+    () => nonEssentialData.reduce((s, c) => s + c.amount, 0),
     [nonEssentialData]
   );
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
+      <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill}>
         <Pressable style={styles.backdrop} onPress={onClose} />
 
         <View style={styles.container}>
           <Card style={styles.card}>
-            {/* Header */}
+            {/* HEADER */}
             <View style={styles.header}>
               <Text style={styles.title}>
                 {monthLabel} breakdown
@@ -62,7 +59,7 @@ export function EssentialSplitModal({
               </Pressable>
             </View>
 
-            {/* Essential */}
+            {/* ESSENTIAL */}
             {essentialData.length > 0 && (
               <>
                 <Text style={styles.section}>Essential</Text>
@@ -73,7 +70,7 @@ export function EssentialSplitModal({
               </>
             )}
 
-            {/* Non-Essential */}
+            {/* NON ESSENTIAL */}
             {nonEssentialData.length > 0 && (
               <>
                 <Text style={[styles.section, { marginTop: spacing.lg }]}>
@@ -91,6 +88,8 @@ export function EssentialSplitModal({
     </Modal>
   );
 }
+
+/* ---------- STYLES ---------- */
 
 const styles = StyleSheet.create({
   backdrop: {

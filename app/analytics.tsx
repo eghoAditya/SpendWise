@@ -14,9 +14,11 @@ import {
   View,
 } from 'react-native';
 
-import { CategorySlice } from '@/src/components/CategoryPieChart';
+import {
+  CategoryPieChart,
+  CategorySlice,
+} from '@/src/components/CategoryPieChart';
 import { EssentialSplitModal } from '@/src/components/EssentialSplitModal';
-import { PieChart } from 'react-native-chart-kit';
 
 /* ---------------- CATEGORY META ---------------- */
 
@@ -140,19 +142,6 @@ export default function AnalyticsScreen() {
     [categorySlices]
   );
 
-  /* ---------- PIE DATA ---------- */
-  const pieChartData = useMemo(
-    () =>
-      categorySlices.map((c) => ({
-        name: c.label,
-        amount: c.amount,
-        color: c.color,
-        legendFontColor: colors.textSecondary,
-        legendFontSize: 12,
-      })),
-    [categorySlices]
-  );
-
   const onChartLayout = (e: LayoutChangeEvent) => {
     setChartWidth(e.nativeEvent.layout.width);
   };
@@ -205,22 +194,16 @@ export default function AnalyticsScreen() {
         </View>
       </Card>
 
-      {/* CATEGORY BREAKDOWN */}
-      {selectedMonth && pieChartData.length > 0 && (
+      {/* CATEGORY BREAKDOWN (DONUT) */}
+      {selectedMonth && categorySlices.length > 0 && (
         <Card style={styles.chartCard}>
           <Text style={styles.sectionTitle}>
             {selectedMonth.label} category breakdown
           </Text>
 
           <Pressable onPress={() => setSplitOpen(true)}>
-            <PieChart
-              data={pieChartData}
-              width={chartWidth}
-              height={220}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="12"
-              chartConfig={{ color: () => colors.textSecondary }}
+            <CategoryPieChart
+              data={categorySlices}
             />
           </Pressable>
 
