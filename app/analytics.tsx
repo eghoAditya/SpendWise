@@ -13,7 +13,31 @@ import {
   View,
 } from 'react-native';
 
+import { CategorySlice } from '@/src/components/CategoryPieChart';
+import { EssentialSplitModal } from '@/src/components/EssentialSplitModal';
 import { BarChart, PieChart } from 'react-native-chart-kit';
+
+/* ---------------- CATEGORY META ---------------- */
+
+const CATEGORY_META: Record<
+  string,
+  { label: string; color: string; type: 'essential' | 'non-essential' }
+> = {
+  rent: { label: 'Rent', color: '#22c55e', type: 'essential' },
+  fuel: { label: 'Fuel', color: '#f97316', type: 'essential' },
+  bills: { label: 'Bills', color: '#eab308', type: 'essential' },
+  grocery: { label: 'Grocery', color: '#10b981', type: 'essential' },
+  transport: { label: 'Transport', color: '#0ea5e9', type: 'essential' },
+  pet_supplies: { label: 'Pet Supplies', color: '#8b5cf6', type: 'essential' },
+
+  food: { label: 'Food', color: '#ef4444', type: 'non-essential' },
+  fun: { label: 'Fun', color: '#6366f1', type: 'non-essential' },
+  shopping: { label: 'Shopping', color: '#ec4899', type: 'non-essential' },
+  party: { label: 'Party', color: '#f43f5e', type: 'non-essential' },
+  movies: { label: 'Movies', color: '#14b8a6', type: 'non-essential' },
+
+  other: { label: 'Other', color: '#6b7280', type: 'non-essential' },
+};
 
 type MonthMeta = {
   label: string;
@@ -26,8 +50,9 @@ export default function AnalyticsScreen() {
   const { expenses } = useExpenses();
   const [chartWidth, setChartWidth] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<MonthMeta | null>(null);
+  const [splitOpen, setSplitOpen] = useState(false);
 
-  // ---------- LAST 3 MONTHS ----------
+  /* ---------- LAST 3 MONTHS ---------- */
   const monthsData = useMemo(() => {
     const now = new Date();
 
@@ -61,7 +86,8 @@ export default function AnalyticsScreen() {
     }
   }, [monthsData, selectedMonth]);
 
-  const categoryData = useMemo(() => {
+  /* ---------- CATEGORY SLICES (APP STANDARD) ---------- */
+  const categorySlices: CategorySlice[] = useMemo(() => {
     if (!selectedMonth) return [];
 
     const totals: Record<string, number> = {};
@@ -76,31 +102,43 @@ export default function AnalyticsScreen() {
       }
     });
 
-    const COLORS: Record<string, string> = {
-      rent: '#22c55e',
-      fuel: '#f97316',
-      bills: '#eab308',
-      grocery: '#10b981',
-      transport: '#0ea5e9',
-      pet_supplies: '#8b5cf6',
-    
-      food: '#ef4444',
-      fun: '#6366f1',
-      shopping: '#ec4899',
-      party: '#f43f5e',
-      movies: '#14b8a6',
-      other: '#6b7280',
-    };
-    
-
-    return Object.keys(totals).map((key) => ({
-      name: key,
-      amount: totals[key],
-      color: COLORS[key] || colors.textMuted,
-      legendFontColor: colors.textSecondary,
-      legendFontSize: 12,
+    return Object.entries(totals).map(([key, amount]) => ({
+      key,
+      label: CATEGORY_META[key]?.label || 'Other',
+      amount,
+      color: CATEGORY_META[key]?.color || colors.textMuted,
     }));
   }, [expenses, selectedMonth]);
+
+  /* ---------- SPLIT DATA ---------- */
+  const essentialData = useMemo(
+    () =>
+      categorySlices.filter(
+        (c) => CATEGORY_META[c.key]?.type === 'essential'
+      ),
+    [categorySlices]
+  );
+
+  const nonEssentialData = useMemo(
+    () =>
+      categorySlices.filter(
+        (c) => CATEGORY_META[c.key]?.type === 'non-essential'
+      ),
+    [categorySlices]
+  );
+
+  /* ---------- PIE DATA FOR CHART KIT ---------- */
+  const pieChartData = useMemo(
+    () =>
+      categorySlices.map((c) => ({
+        name: c.label,
+        amount: c.amount,
+        color: c.color,
+        legendFontColor: colors.textSecondary,
+        legendFontSize: 12,
+      })),
+    [categorySlices]
+  );
 
   const onChartLayout = (e: LayoutChangeEvent) => {
     setChartWidth(e.nativeEvent.layout.width);
@@ -108,7 +146,6 @@ export default function AnalyticsScreen() {
 
   return (
     <Screen>
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.subtitle}>Last 3 months overview</Text>
       </View>
@@ -124,10 +161,7 @@ export default function AnalyticsScreen() {
             <Pressable
               key={m.label}
               onPress={() => setSelectedMonth(m)}
-              style={[
-                styles.monthPressable,
-                isActive && styles.monthActive,
-              ]}
+              style={[styles.monthPressable, isActive && styles.monthActive]}
             >
               <Card>
                 <Text style={styles.monthLabel}>{m.label}</Text>
@@ -140,10 +174,9 @@ export default function AnalyticsScreen() {
         })}
       </View>
 
-      {/* MONTHLY BAR CHART */}
+      {/* BAR CHART */}
       <Card style={styles.chartCard}>
         <Text style={styles.sectionTitle}>Monthly spending</Text>
-
         <View onLayout={onChartLayout}>
           {chartWidth > 0 && (
             <BarChart
@@ -156,7 +189,6 @@ export default function AnalyticsScreen() {
               yAxisLabel="₹"
               yAxisSuffix=""
               fromZero
-              showValuesOnTopOfBars
               chartConfig={{
                 backgroundColor: 'transparent',
                 backgroundGradientFrom: 'transparent',
@@ -175,35 +207,29 @@ export default function AnalyticsScreen() {
       </Card>
 
       {/* CATEGORY BREAKDOWN */}
-      {selectedMonth && categoryData.length > 0 && (
+      {selectedMonth && pieChartData.length > 0 && (
         <Card style={styles.chartCard}>
           <Text style={styles.sectionTitle}>
             {selectedMonth.label} category breakdown
           </Text>
 
-          <PieChart
-            data={categoryData}
-            width={chartWidth}
-            height={220}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="12"
-            chartConfig={{ color: () => colors.textPrimary }}
-          />
+          <Pressable onPress={() => setSplitOpen(true)}>
+            <PieChart
+              data={pieChartData}
+              width={chartWidth}
+              height={220}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="12"
+              chartConfig={{ color: () => colors.textSecondary }}
+            />
+          </Pressable>
 
-          {/* SCROLLABLE CATEGORY LIST */}
-          <ScrollView
-            style={styles.categoryScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {categoryData.map((c) => (
-              <View key={c.name} style={styles.categoryRow}>
-                <View
-                  style={[styles.dot, { backgroundColor: c.color }]}
-                />
-                <Text style={styles.categoryLabel}>
-                  {c.name}
-                </Text>
+          <ScrollView style={styles.categoryScroll}>
+            {categorySlices.map((c) => (
+              <View key={c.key} style={styles.categoryRow}>
+                <View style={[styles.dot, { backgroundColor: c.color }]} />
+                <Text style={styles.categoryLabel}>{c.label}</Text>
                 <Text style={styles.categoryAmount}>
                   ₹{c.amount.toLocaleString()}
                 </Text>
@@ -212,48 +238,36 @@ export default function AnalyticsScreen() {
           </ScrollView>
         </Card>
       )}
+
+      <EssentialSplitModal
+        visible={splitOpen}
+        monthLabel={selectedMonth?.label || ''}
+        essentialData={essentialData}
+        nonEssentialData={nonEssentialData}
+        onClose={() => setSplitOpen(false)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    marginBottom: spacing.lg,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-
-  cardRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  monthPressable: {
-    flex: 1,
-  },
+  header: { marginBottom: spacing.lg },
+  subtitle: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+  cardRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  monthPressable: { flex: 1 },
   monthActive: {
     borderWidth: 1,
     borderColor: colors.accent,
     borderRadius: 16,
   },
-  monthLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
+  monthLabel: { fontSize: 13, color: colors.textSecondary },
   monthAmount: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
     marginTop: 4,
   },
-
-  chartCard: {
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.md,
-  },
+  chartCard: { marginBottom: spacing.lg, paddingVertical: spacing.md },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -261,9 +275,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-
   categoryScroll: {
-    maxHeight: 220, // ✅ fits ~6 categories, scrolls after
+    maxHeight: 220,
     paddingHorizontal: spacing.md,
     marginTop: spacing.sm,
   },
@@ -282,7 +295,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: colors.textSecondary,
-    textTransform: 'capitalize',
   },
   categoryAmount: {
     fontWeight: '600',

@@ -251,14 +251,13 @@ export default function DashboardScreen() {
 
       {/* ===== Essential vs Non-Essential Modal ===== */}
       <EssentialSplitModal
-        visible={splitOpen}
-        monthLabel={monthName}
-        essentialData={essentialData}
-        nonEssentialData={nonEssentialData}
-        essentialTotal={essentialTotal}
-        nonEssentialTotal={nonEssentialTotal}
-        onClose={() => setSplitOpen(false)}
-      />
+  visible={splitOpen}
+  monthLabel={monthName}
+  essentialData={essentialData}
+  nonEssentialData={nonEssentialData}
+  onClose={() => setSplitOpen(false)}
+/>
+
     </Screen>
   );
 }

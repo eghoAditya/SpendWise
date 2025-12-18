@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import {
-    Animated,
     Modal,
     Pressable,
     StyleSheet,
@@ -19,8 +18,6 @@ type Props = {
   monthLabel: string;
   essentialData: CategorySlice[];
   nonEssentialData: CategorySlice[];
-  essentialTotal: number;
-  nonEssentialTotal: number;
   onClose: () => void;
 };
 
@@ -29,103 +26,80 @@ export function EssentialSplitModal({
   monthLabel,
   essentialData,
   nonEssentialData,
-  essentialTotal,
-  nonEssentialTotal,
   onClose,
 }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.9)).current;
+  /** ✅ SAFELY COMPUTE TOTALS */
+  const essentialTotal = useMemo(
+    () =>
+      essentialData.reduce((sum, c) => sum + c.amount, 0),
+    [essentialData]
+  );
 
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          damping: 16,
-          stiffness: 120,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      opacity.setValue(0);
-      scale.setValue(0.9);
-    }
-  }, [visible]);
+  const nonEssentialTotal = useMemo(
+    () =>
+      nonEssentialData.reduce((sum, c) => sum + c.amount, 0),
+    [nonEssentialData]
+  );
 
   return (
-    <Modal transparent visible={visible} animationType="none">
-      {/* Background blur */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-        <BlurView
-          intensity={90}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
-      </Pressable>
+    <Modal visible={visible} transparent animationType="fade">
+      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
 
-      {/* Modal */}
-      <Animated.View
-        style={[
-          styles.container,
-          { opacity, transform: [{ scale }] },
-        ]}
-      >
-        <Card style={styles.card}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.month}>{monthLabel} overview</Text>
-            <Pressable onPress={onClose}>
-              <Ionicons
-                name="close"
-                size={22}
-                color={colors.textSecondary}
-              />
-            </Pressable>
-          </View>
-
-          {/* Essential */}
-          <Text style={styles.sectionTitle}>Essential</Text>
-          {essentialData.length === 0 ? (
-            <Text style={styles.emptyText}>No essential spending</Text>
-          ) : (
-            <>
-              <CategoryPieChart data={essentialData} />
-              <Text style={styles.total}>
-                ₹{essentialTotal.toLocaleString()}
+        <View style={styles.container}>
+          <Card style={styles.card}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.title}>
+                {monthLabel} breakdown
               </Text>
-            </>
-          )}
+              <Pressable onPress={onClose}>
+                <Ionicons
+                  name="close"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+            </View>
 
-          <View style={styles.divider} />
+            {/* Essential */}
+            {essentialData.length > 0 && (
+              <>
+                <Text style={styles.section}>Essential</Text>
+                <CategoryPieChart data={essentialData} />
+                <Text style={styles.total}>
+                  ₹{essentialTotal.toLocaleString()}
+                </Text>
+              </>
+            )}
 
-          {/* Non-Essential */}
-          <Text style={styles.sectionTitle}>Non-Essential</Text>
-          {nonEssentialData.length === 0 ? (
-            <Text style={styles.emptyText}>No non-essential spending</Text>
-          ) : (
-            <>
-              <CategoryPieChart data={nonEssentialData} />
-              <Text style={styles.total}>
-                ₹{nonEssentialTotal.toLocaleString()}
-              </Text>
-            </>
-          )}
-        </Card>
-      </Animated.View>
+            {/* Non-Essential */}
+            {nonEssentialData.length > 0 && (
+              <>
+                <Text style={[styles.section, { marginTop: spacing.lg }]}>
+                  Non-essential
+                </Text>
+                <CategoryPieChart data={nonEssentialData} />
+                <Text style={styles.total}>
+                  ₹{nonEssentialTotal.toLocaleString()}
+                </Text>
+              </>
+            )}
+          </Card>
+        </View>
+      </BlurView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
+    padding: spacing.lg,
   },
   card: {
     padding: spacing.lg,
@@ -136,34 +110,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  month: {
+  title: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  sectionTitle: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+  section: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   total: {
     marginTop: spacing.sm,
-    fontSize: 18,
+    textAlign: 'center',
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.borderSubtle,
-    marginVertical: spacing.lg,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginVertical: spacing.sm,
   },
 });
