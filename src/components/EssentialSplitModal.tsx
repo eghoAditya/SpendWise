@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+    Animated,
     Modal,
     Pressable,
     StyleSheet,
@@ -14,93 +16,154 @@ import { CategoryPieChart, CategorySlice } from './CategoryPieChart';
 
 type Props = {
   visible: boolean;
-  onClose: () => void;
+  monthLabel: string;
   essentialData: CategorySlice[];
   nonEssentialData: CategorySlice[];
+  essentialTotal: number;
+  nonEssentialTotal: number;
+  onClose: () => void;
 };
 
 export function EssentialSplitModal({
   visible,
-  onClose,
+  monthLabel,
   essentialData,
   nonEssentialData,
+  essentialTotal,
+  nonEssentialTotal,
+  onClose,
 }: Props) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          damping: 16,
+          stiffness: 120,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      opacity.setValue(0);
+      scale.setValue(0.9);
+    }
+  }, [visible]);
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-    >
-      {/* BLURRED BACKGROUND */}
+    <Modal transparent visible={visible} animationType="none">
+      {/* Background blur */}
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-        <BlurView intensity={40} style={StyleSheet.absoluteFill} />
+        <BlurView
+          intensity={90}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
       </Pressable>
 
-      {/* CENTER CARD */}
-      <View style={styles.centerWrapper}>
-        <Card style={styles.modalCard}>
-          <Text style={styles.title}>
-            Spending breakdown
-          </Text>
+      {/* Modal */}
+      <Animated.View
+        style={[
+          styles.container,
+          { opacity, transform: [{ scale }] },
+        ]}
+      >
+        <Card style={styles.card}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.month}>{monthLabel} overview</Text>
+            <Pressable onPress={onClose}>
+              <Ionicons
+                name="close"
+                size={22}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+          </View>
 
-          {/* ESSENTIAL */}
-          <Text style={styles.sectionLabel}>
-            Essential
-          </Text>
+          {/* Essential */}
+          <Text style={styles.sectionTitle}>Essential</Text>
           {essentialData.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No essential expenses
-            </Text>
+            <Text style={styles.emptyText}>No essential spending</Text>
           ) : (
-            <CategoryPieChart data={essentialData} />
+            <>
+              <CategoryPieChart data={essentialData} />
+              <Text style={styles.total}>
+                ₹{essentialTotal.toLocaleString()}
+              </Text>
+            </>
           )}
 
-          {/* NON ESSENTIAL */}
-          <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>
-            Non-Essential
-          </Text>
+          <View style={styles.divider} />
+
+          {/* Non-Essential */}
+          <Text style={styles.sectionTitle}>Non-Essential</Text>
           {nonEssentialData.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No non-essential expenses
-            </Text>
+            <Text style={styles.emptyText}>No non-essential spending</Text>
           ) : (
-            <CategoryPieChart data={nonEssentialData} />
+            <>
+              <CategoryPieChart data={nonEssentialData} />
+              <Text style={styles.total}>
+                ₹{nonEssentialTotal.toLocaleString()}
+              </Text>
+            </>
           )}
         </Card>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  centerWrapper: {
+  container: {
     flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  card: {
+    padding: spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    marginBottom: spacing.md,
   },
-  modalCard: {
-    width: '100%',
-    maxWidth: 420,
-  },
-  title: {
-    fontSize: 18,
+  month: {
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  total: {
+    marginTop: spacing.sm,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderSubtle,
+    marginVertical: spacing.lg,
   },
   emptyText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     textAlign: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
   },
 });

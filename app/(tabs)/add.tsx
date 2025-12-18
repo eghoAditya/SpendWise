@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -21,29 +21,41 @@ import { useExpenses } from '../../src/context/ExpensesContext';
 import { colors } from '../../src/theme/colors';
 import { ExpenseCategory } from '../../src/types/expense';
 
-const CATEGORIES: {
-  key: ExpenseCategory;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}[] = [
-  { key: 'food',          label: 'Food',          icon: 'fast-food-outline' },
-  { key: 'entertainment', label: 'Fun',           icon: 'game-controller-outline' },
-  { key: 'shopping',      label: 'Shopping',      icon: 'bag-handle-outline' },
-  { key: 'fuel',          label: 'Fuel',          icon: 'car-outline' },
-  { key: 'bills',         label: 'Bills',         icon: 'flash-outline' },
-  { key: 'other',         label: 'Other',         icon: 'ellipsis-horizontal-circle-outline' },
-];
+
+const ESSENTIAL_CATEGORIES = [
+  { key: 'rent', label: 'Rent', icon: 'home-outline' },
+  { key: 'fuel', label: 'Fuel', icon: 'car-outline' },
+  { key: 'bills', label: 'Bills', icon: 'flash-outline' },
+  { key: 'grocery', label: 'Grocery', icon: 'cart-outline' },
+  { key: 'transport', label: 'Transport', icon: 'bus-outline' },
+  { key: 'pet_supplies', label: 'Pet Supplies', icon: 'paw-outline' },
+] as const;
+
+const NON_ESSENTIAL_CATEGORIES = [
+  { key: 'food', label: 'Food', icon: 'fast-food-outline' },
+  { key: 'fun', label: 'Fun', icon: 'game-controller-outline' },
+  { key: 'shopping', label: 'Shopping', icon: 'bag-handle-outline' },
+  { key: 'party', label: 'Party', icon: 'wine-outline' },
+  { key: 'movies', label: 'Movies', icon: 'film-outline' },
+  { key: 'other', label: 'other', icon: 'layers-outline' },
+
+] as const;
+
+type ExpenseTypeUI = 'essential' | 'non_essential';
 
 export default function AddExpenseScreen() {
   const { addExpense } = useExpenses();
 
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<ExpenseCategory>('food');
+  const [expenseType, setExpenseType] =
+    useState<ExpenseTypeUI>('essential');
+  const [category, setCategory] =
+    useState<ExpenseCategory>('rent');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const parsedAmount = parseFloat(amount.replace(/,/g, '.'));
@@ -52,22 +64,13 @@ export default function AddExpenseScreen() {
 
   const dateISO = selectedDate.toISOString().slice(0, 10);
 
-  const isToday = (() => {
-    const now = new Date();
-    return (
-      selectedDate.getDate() === now.getDate() &&
-      selectedDate.getMonth() === now.getMonth() &&
-      selectedDate.getFullYear() === now.getFullYear()
-    );
-  })();
-
-  const dateLabel = isToday
-    ? 'Today'
-    : selectedDate.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+  const categories = useMemo(
+    () =>
+      expenseType === 'essential'
+        ? ESSENTIAL_CATEGORIES
+        : NON_ESSENTIAL_CATEGORIES,
+    [expenseType]
+  );
 
   const handleSubmit = () => {
     setTouched(true);
@@ -86,45 +89,33 @@ export default function AddExpenseScreen() {
       setSubmitting(false);
       setAmount('');
       setNote('');
-      setCategory('food');
+      setExpenseType('essential');
+      setCategory('rent');
       setTouched(false);
       setSelectedDate(new Date());
-    }, 350);
+    }, 300);
   };
 
   const openDatePicker = () => {
-    const current = selectedDate.toISOString().slice(0, 10);
-
     if (Platform.OS === 'web') {
       const input = window.prompt(
         'Enter date as YYYY-MM-DD',
-        current
+        dateISO
       );
       if (!input) return;
-
       const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        setSelectedDate(parsed);
-      } else {
-        window.alert('Invalid date format. Please use YYYY-MM-DD.');
-      }
+      if (!isNaN(parsed.getTime())) setSelectedDate(parsed);
       return;
     }
-
     setIsDatePickerOpen(true);
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (event.type === 'set' && date) {
-      setSelectedDate(date);
-    }
-    if (Platform.OS === 'android') {
-      setIsDatePickerOpen(false);
-    }
-  };
-
-  const closeDatePicker = () => {
-    setIsDatePickerOpen(false);
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    date?: Date
+  ) => {
+    if (event.type === 'set' && date) setSelectedDate(date);
+    if (Platform.OS === 'android') setIsDatePickerOpen(false);
   };
 
   return (
@@ -132,25 +123,19 @@ export default function AddExpenseScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.title}>Add expense</Text>
-              <Text style={styles.subtitle}>
-                Log a new transaction to keep your spending on track.
-              </Text>
-            </View>
-            <View style={styles.iconBadge}>
-              <Ionicons name="wallet-outline" size={22} color={colors.accent} />
-            </View>
+            <Text style={styles.title}>Add expense</Text>
+            <Ionicons
+              name="wallet-outline"
+              size={22}
+              color={colors.accent}
+            />
           </View>
 
-          <Card style={styles.formCard}>
+          <Card>
+            {/* AMOUNT */}
             <Text style={styles.label}>Amount</Text>
             <View style={styles.amountRow}>
               <Text style={styles.currency}>₹</Text>
@@ -158,45 +143,83 @@ export default function AddExpenseScreen() {
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
                 style={styles.amountInput}
                 onBlur={() => setTouched(true)}
               />
             </View>
-            {touched && !amountIsValid && (
-              <Text style={styles.errorText}>
-                Enter a valid amount greater than 0.
-              </Text>
-            )}
 
+            {/* TYPE TOGGLE */}
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>
+              Expense type
+            </Text>
+            <View style={styles.typeRow}>
+              {(['essential', 'non_essential'] as const).map(
+                (t) => {
+                  const active = expenseType === t;
+                  return (
+                    <Pressable
+                      key={t}
+                      onPress={() => {
+                        setExpenseType(t);
+                        setCategory(
+                          t === 'essential' ? 'rent' : 'food'
+                        );
+                      }}
+                      style={[
+                        styles.typeButton,
+                        active && styles.typeButtonActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.typeText,
+                          active && styles.typeTextActive,
+                        ]}
+                      >
+                        {t === 'essential'
+                          ? 'Essential'
+                          : 'Non-Essential'}
+                      </Text>
+                    </Pressable>
+                  );
+                }
+              )}
+            </View>
+
+            {/* CATEGORY GRID */}
             <Text style={[styles.label, { marginTop: spacing.lg }]}>
               Category
             </Text>
             <View style={styles.categoryGrid}>
-              {CATEGORIES.map((item) => {
-                const isActive = item.key === category;
+              {categories.map((item) => {
+                const active = item.key === category;
                 return (
                   <Pressable
                     key={item.key}
                     onPress={() => setCategory(item.key)}
-                    style={{ flex: 1, minWidth: '30%' }}
+                    style={{ minWidth: '45%' }}
                   >
                     <Card
                       style={[
                         styles.categoryCard,
-                        isActive && styles.categoryCardActive,
+                        active && styles.categoryCardActive,
                       ]}
                     >
                       <Ionicons
                         name={item.icon}
                         size={20}
-                        color={isActive ? colors.accent : colors.textSecondary}
+                        color={
+                          active
+                            ? colors.accent
+                            : colors.textSecondary
+                        }
                       />
                       <Text
                         style={[
                           styles.categoryLabel,
-                          isActive && styles.categoryLabelActive,
+                          active &&
+                            styles.categoryLabelActive,
                         ]}
                       >
                         {item.label}
@@ -207,30 +230,31 @@ export default function AddExpenseScreen() {
               })}
             </View>
 
-            <Text style={[styles.label, { marginTop: spacing.lg }]}>Date</Text>
-            <Pressable onPress={openDatePicker} style={styles.inlineRowPress}>
+            {/* DATE */}
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>
+              Date
+            </Text>
+            <Pressable onPress={openDatePicker} style={styles.inlineRow}>
               <Ionicons
                 name="calendar-outline"
                 size={18}
                 color={colors.textSecondary}
               />
-              <Text style={styles.dateText}>{dateLabel}</Text>
-              <Text style={styles.dateHint}>
-                {Platform.OS === 'web'
-                  ? '(click to type date)'
-                  : '(tap to change)'}
+              <Text style={styles.dateText}>
+                {selectedDate.toDateString()}
               </Text>
             </Pressable>
 
-            <Text style={[styles.label, { marginTop: spacing.lg }]}>Note</Text>
+            {/* NOTE */}
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>
+              Note
+            </Text>
             <TextInput
               value={note}
               onChangeText={setNote}
-              placeholder="Optional note (e.g. dinner, cab, groceries)"
-              placeholderTextColor={colors.textMuted}
+              placeholder="Optional note"
               style={styles.noteInput}
               multiline
-              numberOfLines={3}
             />
 
             <PrimaryButton
@@ -241,99 +265,36 @@ export default function AddExpenseScreen() {
               style={{ marginTop: spacing.xl }}
             />
           </Card>
-
-          <View style={styles.helperTextWrapper}>
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.helperText}>
-              Once saved, this expense immediately flows into your dashboard,
-              chart, and history.
-            </Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       {Platform.OS !== 'web' && isDatePickerOpen && (
-        <View style={styles.dateOverlay}>
-          <Pressable style={styles.overlayBackdrop} onPress={closeDatePicker} />
-          <View style={styles.dateDialog}>
-            <Text style={styles.dialogTitle}>Select date</Text>
-            <Text style={styles.dialogSubtitle}>
-              Choose when this expense actually happened.
-            </Text>
-            <View style={styles.datePickerWrapper}>
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                onChange={handleDateChange}
-                maximumDate={new Date()}
-                themeVariant="dark"
-              />
-            </View>
-            {Platform.OS === 'ios' && (
-              <View style={styles.dialogActions}>
-                <Pressable
-                  onPress={closeDatePicker}
-                  style={({ pressed }) => [
-                    styles.dialogButton,
-                    pressed && styles.dialogButtonPressed,
-                  ]}
-                >
-                  <Text style={styles.dialogButtonTextSecondary}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={closeDatePicker}
-                  style={({ pressed }) => [
-                    styles.dialogButton,
-                    styles.dialogButtonPrimary,
-                    pressed && styles.dialogButtonPrimaryPressed,
-                  ]}
-                >
-                  <Text style={styles.dialogButtonTextPrimary}>Done</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        </View>
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          maximumDate={new Date()}
+          onChange={handleDateChange}
+        />
       )}
     </Screen>
   );
 }
 
+/* styles unchanged */
+
+
+
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: spacing.xxl,
-  },
+  scrollContent: { paddingBottom: spacing.xxl },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.lg,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
-  },
-  formCard: {
-    marginBottom: spacing.lg,
   },
   label: {
     fontSize: 13,
@@ -343,165 +304,73 @@ const styles = StyleSheet.create({
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
     borderWidth: 1,
+    borderRadius: 14,
+    padding: spacing.md,
     borderColor: colors.borderSubtle,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: '#020617',
   },
-  currency: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    marginRight: 4,
-  },
+  currency: { fontSize: 18, marginRight: 4 },
   amountInput: {
     flex: 1,
     fontSize: 20,
-    fontWeight: '600',
     color: colors.textPrimary,
   },
-  errorText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#f97373',
+  typeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    borderColor: colors.borderSubtle,
+  },
+  typeButtonActive: {
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderColor: colors.accent,
+  },
+  typeText: { color: colors.textSecondary },
+  typeTextActive: {
+    color: colors.accent,
+    fontWeight: '600',
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.sm,
   },
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    gap: 8,
+    padding: spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    backgroundColor: '#020617',
-    gap: 8,
   },
   categoryCardActive: {
+    backgroundColor: 'rgba(34,197,94,0.1)',
     borderColor: colors.accent,
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
-  categoryLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
+  categoryLabel: { color: colors.textSecondary },
   categoryLabelActive: {
     color: colors.accent,
     fontWeight: '500',
   },
-  inlineRowPress: {
+  inlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
   },
-  dateText: {
-    fontSize: 13,
-    color: colors.textPrimary,
-  },
-  dateHint: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
+  dateText: { color: colors.textPrimary, fontSize: 13 },
   noteInput: {
-    marginTop: 4,
-    minHeight: 76,
+    minHeight: 72,
+    borderWidth: 1,
     borderRadius: 14,
-    borderWidth: 1,
+    padding: spacing.md,
     borderColor: colors.borderSubtle,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     color: colors.textPrimary,
-    fontSize: 14,
-    textAlignVertical: 'top',
-  },
-  helperTextWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginTop: spacing.sm,
-  },
-  helperText: {
-    flex: 1,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  dateOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    top: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlayBackdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    top: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-  },
-  dateDialog: {
-    width: '90%',
-    maxWidth: 420,
-    borderRadius: 20,
-    padding: spacing.lg,
-    backgroundColor: '#020617',
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  dialogSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: spacing.md,
-  },
-  datePickerWrapper: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#020617',
-  },
-  dialogActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  dialogButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 999,
-  },
-  dialogButtonPressed: {
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-  },
-  dialogButtonPrimary: {
-    backgroundColor: colors.accent,
-  },
-  dialogButtonPrimaryPressed: {
-    opacity: 0.9,
-  },
-  dialogButtonTextSecondary: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dialogButtonTextPrimary: {
-    color: '#020617',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

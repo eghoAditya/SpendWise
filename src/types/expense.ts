@@ -13,10 +13,8 @@ export type ExpenseCategory =
   | 'shopping'
   | 'party'
   | 'movies'
-  | 'entertainment'
-
-  // Fallback
   | 'other';
+
 
 export type ExpenseCategoryType = 'essential' | 'non_essential';
 
@@ -25,6 +23,6 @@ export interface Expense {
   amount: number;
   category: ExpenseCategory;
   note?: string;
-  date: string;      // YYYY-MM-DD
-  createdAt: string; // ISO timestamp
+  date: string;      
+  createdAt: string;
 }

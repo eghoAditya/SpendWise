@@ -82,14 +82,13 @@ export default function AnalyticsScreen() {
       bills: '#eab308',
       grocery: '#10b981',
       transport: '#0ea5e9',
-      pet: '#8b5cf6',
+      pet_supplies: '#8b5cf6',
     
       food: '#ef4444',
-      entertainment: '#6366f1',
+      fun: '#6366f1',
       shopping: '#ec4899',
       party: '#f43f5e',
       movies: '#14b8a6',
-    
       other: '#6b7280',
     };
     

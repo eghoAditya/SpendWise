@@ -1,9 +1,9 @@
 import { Expense, ExpenseCategory } from '../types/expense';
-import { CATEGORY_TYPE_MAP } from './categoryConfig';
+import { CATEGORY_TYPE } from './categoryConfig';
 
 
 function createEmptyCategoryTotals(): Record<ExpenseCategory, number> {
-  return Object.keys(CATEGORY_TYPE_MAP).reduce((acc, key) => {
+  return Object.keys(CATEGORY_TYPE).reduce((acc, key) => {
     acc[key as ExpenseCategory] = 0;
     return acc;
   }, {} as Record<ExpenseCategory, number>);
@@ -26,7 +26,7 @@ export function getEssentialSplitTotals(expenses: Expense[]) {
   let nonEssentialTotal = 0;
 
   expenses.forEach((e) => {
-    const type = CATEGORY_TYPE_MAP[e.category];
+    const type = CATEGORY_TYPE[e.category];
     if (type === 'essential') {
       essentialTotal += e.amount;
     } else {

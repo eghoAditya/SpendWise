@@ -12,7 +12,7 @@ type NewExpenseInput = {
   amount: number;
   category: ExpenseCategory;
   note?: string;
-  date: string; 
+  date: string;
 };
 
 type ExpensesContextValue = {
@@ -27,13 +27,14 @@ type ExpensesContextValue = {
 const STORAGE_EXPENSES_KEY = '@spendwise/expenses';
 const STORAGE_BUDGET_KEY = '@spendwise/budget';
 
-const ExpensesContext = createContext<ExpensesContextValue | undefined>(
-  undefined
-);
+const ExpensesContext =
+  createContext<ExpensesContextValue | undefined>(
+    undefined
+  );
 
-export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const ExpensesProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<number>(60000);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -41,18 +42,20 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const load = async () => {
       try {
-        const [[, rawExpenses], [, rawBudget]] = await AsyncStorage.multiGet([
-          STORAGE_EXPENSES_KEY,
-          STORAGE_BUDGET_KEY,
-        ]);
+        const [[, rawExpenses], [, rawBudget]] =
+          await AsyncStorage.multiGet([
+            STORAGE_EXPENSES_KEY,
+            STORAGE_BUDGET_KEY,
+          ]);
 
         if (rawExpenses) {
-          const parsedExpenses: Expense[] = JSON.parse(rawExpenses);
-          setExpenses(parsedExpenses);
+          setExpenses(JSON.parse(rawExpenses));
         }
 
         if (rawBudget) {
-          const parsedBudget = Number(JSON.parse(rawBudget));
+          const parsedBudget = Number(
+            JSON.parse(rawBudget)
+          );
           if (!isNaN(parsedBudget) && parsedBudget > 0) {
             setBudget(parsedBudget);
           }
@@ -69,43 +72,27 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     if (!isHydrated) return;
-
-    const saveExpenses = async () => {
-      try {
-        await AsyncStorage.setItem(
-          STORAGE_EXPENSES_KEY,
-          JSON.stringify(expenses)
-        );
-      } catch (err) {
-        console.warn('Failed to save expenses', err);
-      }
-    };
-
-    saveExpenses();
+    AsyncStorage.setItem(
+      STORAGE_EXPENSES_KEY,
+      JSON.stringify(expenses)
+    ).catch(() => {});
   }, [expenses, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
-
-    const saveBudget = async () => {
-      try {
-        await AsyncStorage.setItem(
-          STORAGE_BUDGET_KEY,
-          JSON.stringify(budget)
-        );
-      } catch (err) {
-        console.warn('Failed to save budget', err);
-      }
-    };
-
-    saveBudget();
+    AsyncStorage.setItem(
+      STORAGE_BUDGET_KEY,
+      JSON.stringify(budget)
+    ).catch(() => {});
   }, [budget, isHydrated]);
 
   const addExpense = (input: NewExpenseInput) => {
     const now = new Date().toISOString();
 
     const expense: Expense = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: `${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`,
       amount: input.amount,
       category: input.category,
       note: input.note?.trim() || undefined,
@@ -117,7 +104,9 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deleteExpense = (id: string) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    setExpenses((prev) =>
+      prev.filter((e) => e.id !== id)
+    );
   };
 
   const updateBudget = (value: number) => {
@@ -146,7 +135,9 @@ export const ExpensesProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useExpenses = (): ExpensesContextValue => {
   const ctx = useContext(ExpensesContext);
   if (!ctx) {
-    throw new Error('useExpenses must be used within an ExpensesProvider');
+    throw new Error(
+      'useExpenses must be used within an ExpensesProvider'
+    );
   }
   return ctx;
 };

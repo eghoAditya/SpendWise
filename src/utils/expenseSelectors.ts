@@ -1,12 +1,12 @@
 import { Expense } from '../types/expense';
-import { CATEGORY_TYPE_MAP } from './categoryConfig';
+import { CATEGORY_TYPE } from './categoryConfig';
 
 export function splitExpensesByType(expenses: Expense[]) {
   const essential: Expense[] = [];
   const nonEssential: Expense[] = [];
 
   expenses.forEach((e) => {
-    const type = CATEGORY_TYPE_MAP[e.category];
+    const type = CATEGORY_TYPE[e.category];
     if (type === 'essential') {
       essential.push(e);
     } else {
