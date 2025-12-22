@@ -12,7 +12,6 @@ import { Screen } from '../../src/components/Screen';
 import { useExpenses } from '../../src/context/ExpensesContext';
 import { colors } from '../../src/theme/colors';
 
-/* ---------------- CATEGORY META ---------------- */
 
 const CATEGORY_META: Record<
   string,
@@ -32,8 +31,6 @@ const CATEGORY_META: Record<
   shopping: { label: 'Shopping', color: '#ec4899', type: 'non-essential' },
   party: { label: 'Party', color: '#f43f5e', type: 'non-essential' },
   movies: { label: 'Movies', color: '#14b8a6', type: 'non-essential' },
-
-  // Fallback
   other: { label: 'Other', color: '#6b7280', type: 'non-essential' },
 };
 
@@ -113,7 +110,6 @@ export default function DashboardScreen() {
     };
   }, [expenses]);
 
-  /* -------- Essential / Non-essential split -------- */
 
   const essentialData = useMemo(
     () =>
@@ -250,7 +246,7 @@ export default function DashboardScreen() {
       <View style={{ height: spacing.xxl * 3 }} />
 
       {/* ===== Essential vs Non-Essential Modal ===== */}
-      <EssentialSplitModal
+     <EssentialSplitModal
   visible={splitOpen}
   monthLabel={monthName}
   essentialData={essentialData}
@@ -262,7 +258,6 @@ export default function DashboardScreen() {
   );
 }
 
-/* ---------------- STYLES (unchanged) ---------------- */
 
 const styles = StyleSheet.create({
   summaryCard: { marginBottom: spacing.lg },
