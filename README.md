@@ -3,9 +3,9 @@
 SpendWise is a minimal but polished personal expense tracking app built with **React Native + Expo**.  
 It focuses on a clean dark UI, simple interactions, and a realistic architecture: global state with context, local persistence, and basic data visualization.
 
-**Web version:** https://spendwiseclick.netlify.app/
+**Web version:** https://spendwise2.netlify.app/
 
-[![Streamlit App](https://img.shields.io/badge/Streamlit-Live%20App-brightgreen)](https://spendwiseclick.netlify.app/
+[![Streamlit App](https://img.shields.io/badge/Streamlit-Live%20App-brightgreen)](https://spendwise2.netlify.app/
 )
 
 ---
